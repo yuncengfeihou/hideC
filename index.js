@@ -944,6 +944,19 @@ jQuery(async () => {
     setTimeout(() => {
         console.log(`[${extensionName}] Running initial setup tasks after delay.`);
 
+        try {
+            window.debug_st_settings = extension_settings;
+            console.log('[hideA DEBUG] Exposed extension_settings to window.debug_st_settings for debugging.');
+            // (可选) 打印一下当前 hideA 的设置状态，方便确认
+            if (window.debug_st_settings && window.debug_st_settings[extensionName]) {
+                 console.log('[hideA DEBUG] Current hideA settings state in debug object:', JSON.parse(JSON.stringify(window.debug_st_settings[extensionName])));
+            } else {
+                 console.log('[hideA DEBUG] hideA settings not yet found in debug_st_settings.');
+            }
+        } catch (e) {
+            console.error('[hideA DEBUG] Error occurred while exposing extension_settings:', e);
+        }
+
         // 1. 加载设置并触发迁移检查
         loadSettings();
 
