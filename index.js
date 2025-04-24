@@ -231,29 +231,60 @@ function runMigration() {
 // 初始化扩展设置 (包含迁移检查)
 function loadSettings() {
     console.log(`[${extensionName}] Entering loadSettings.`);
+
+    // ****** 临时调试代码：强制检查迁移 ******
+    // 目的是确保在本次加载时，即使之前标志为 true，也强制设为 false 以运行迁移检查
+    try {
+        // 检查 hideA 的设置是否已存在，并且标志位明确为 true
+        if (extension_settings[extensionName] && extension_settings[extensionName].migration_v1_complete === true) {
+            console.warn(`[${extensionName} DEBUG] TEMPORARY CODE: Forcing migration_v1_complete to false for a one-time check.`);
+            extension_settings[extensionName].migration_v1_complete = false;
+
+            // 尝试立即保存这个更改。这很重要！
+            // 如果 saveSettingsDebounced 可用，调用它。
+            // 注意：防抖函数可能不会立即执行，但这增加了保存的机会。
+            if (typeof saveSettingsDebounced === 'function') {
+                console.log(`[${extensionName} DEBUG] TEMPORARY CODE: Calling saveSettingsDebounced() after forcing flag.`);
+                saveSettingsDebounced();
+            } else {
+                console.warn(`[${extensionName} DEBUG] TEMPORARY CODE: saveSettingsDebounced function not globally accessible here. Relying on subsequent saves.`);
+            }
+        } else if (extension_settings[extensionName]) {
+             console.log(`[${extensionName} DEBUG] TEMPORARY CODE: Migration flag already false or not set to true. No forcing needed.`);
+        } else {
+             console.log(`[${extensionName} DEBUG] TEMPORARY CODE: hideA settings object not found yet. Forcing skipped.`);
+        }
+    } catch (e) {
+        console.error(`[${extensionName} DEBUG] TEMPORARY CODE: Error forcing migration flag:`, e);
+    }
+    // ****** 临时调试代码结束 ******
+
+
     extension_settings[extensionName] = extension_settings[extensionName] || {};
 
     // 使用 Object.assign 合并默认值，确保所有顶级键都存在
     Object.assign(extension_settings[extensionName], {
         enabled: extension_settings[extensionName].hasOwnProperty('enabled') ? extension_settings[extensionName].enabled : defaultSettings.enabled,
         settings_by_entity: extension_settings[extensionName].settings_by_entity || { ...defaultSettings.settings_by_entity },
+        // 这里的 migration_v1_complete 读取的是我们刚刚在临时代码中可能修改过的值
         migration_v1_complete: extension_settings[extensionName].migration_v1_complete || defaultSettings.migration_v1_complete,
     });
 
     // --- 检查并运行迁移 ---
+    // 现在这里应该会读取到 false (如果临时代码成功执行并修改了它)
     if (!extension_settings[extensionName].migration_v1_complete) {
         console.log(`[${extensionName}] Migration flag not found or false. Attempting migration...`);
-        // 使用 try-catch 保证即使迁移失败，后续代码也能继续
         try {
             // 调用迁移函数
-            // 注意：如果 runMigration 需要异步获取数据 (API Plan B)，这里需要调整为 await 或使用 Promise
-            runMigration(); // 假设目前依赖全局变量是同步的
+            runMigration(); // 现在应该会执行了
         } catch (error) {
             console.error(`[${extensionName}] Error during migration execution:`, error);
             // 考虑通知用户迁移失败
             // toastr.error('迁移旧设置时发生意外错误，请检查控制台日志。');
         }
     } else {
+        // 如果临时代码因为某些原因没能将标志设为 false (例如扩展设置对象还不存在)，
+        // 或者迁移真的已经完成且标志又被设回 true，会执行这里
         console.log(`[${extensionName}] Migration flag is true. Skipping migration.`);
     }
     // --------------------------
